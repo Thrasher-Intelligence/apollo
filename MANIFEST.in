@@ -1,0 +1,9 @@
+include README.md
+include requirements.txt
+include run.sh
+include LICENSE
+include apollo/modules/*.py
+recursive-include apollo *.py
+recursive-exclude __pycache__ *
+recursive-exclude *.egg-info *
+recursive-exclude .git *
