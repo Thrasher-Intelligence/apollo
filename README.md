@@ -19,7 +19,7 @@ No installation required! Apollo is a standalone Python application.
 
 ```bash
 # Clone the repository
-git clone https://github.com/jacob-eaker/apollo.git
+git clone https://github.com/thrasher-intelligence/apollo.git
 cd apollo
 
 # Install dependencies
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 ```bash
 # Clone the repository
-git clone https://github.com/jacob-eaker/apollo.git
+git clone https://github.com/thrasher-intelligence/apollo.git
 cd apollo
 
 # Install the package

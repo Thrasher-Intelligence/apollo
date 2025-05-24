@@ -6,7 +6,7 @@ setup(
     description="Python Dependency Analyzer with Interactive Directory Selection",
     author="Jacob Eaker",
     author_email="jacob.eaker@gmail.com",
-    url="https://github.com/titanitescale/apollo",
+    url="https://github.com/thrasher-intelligence/apollo",
     packages=find_packages(),
     entry_points={
         'console_scripts': [
