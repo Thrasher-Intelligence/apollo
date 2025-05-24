@@ -1,12 +1,12 @@
 # Apollo Python Dependency Analyzer
 
-A tool for analyzing and visualizing Python project dependencies.
+A tool for analyzing and visualizing Python project dependencies. Created by Jacob Eaker.
 
 ## Features
 
 - **Interactive Directory Selection**: Navigate through your file system using arrow keys
 - **Dependency Analysis**: Discover and analyze Python module dependencies
-- **Multiple Visualization Options**: View dependencies in ASCII or with a rich TUI using the blessed library
+- **Rich Visualization**: Interactive graph visualization with blessed TUI, with optional ASCII output
 - **Path Flexibility**: Supports tilde (~) expansion and environment variables in paths
 
 ## Installation
@@ -73,17 +73,18 @@ Run the included shell script for the easiest experience:
 ./run.sh
 ```
 
-This will launch Apollo in interactive mode, allowing you to navigate to the directory you want to analyze.
+This will launch Apollo in interactive mode with the blessed visualization, allowing you to navigate to the directory you want to analyze and view the dependency graph in a rich interactive interface.
 
 ### Command Line Options
 
 ```bash
-python main.py [directory] [--view {ascii,blessed}] [--interactive]
+python main.py [directory] [--view {ascii,blessed}] [--interactive] [--ascii]
 ```
 
 - `directory`: The directory to analyze (optional, defaults to interactive selection)
-- `--view`: Rendering method (ascii or blessed, default: ascii)
+- `--view`: Rendering method (blessed or ascii, default: blessed)
 - `--interactive`, `-i`: Force interactive directory selection
+- `--ascii`, `-a`: Use simple ASCII output instead of the default blessed visualization
 
 ### Examples
 
@@ -91,24 +92,38 @@ python main.py [directory] [--view {ascii,blessed}] [--interactive]
 # Interactive directory selection
 python main.py
 
-# Analyze a specific directory
+# Analyze a specific directory (with blessed UI)
 python main.py ~/my-project
 
-# Analyze current directory with blessed UI
-python main.py . --view blessed
+# Analyze current directory with ASCII output
+python main.py . --ascii
 
 # Force interactive mode but start in a specific directory
 python main.py ~/projects --interactive
+
+# Run in debug mode for troubleshooting terminal issues
+./run.sh -d
 ```
 
 ## Interactive Navigation
 
-When using interactive mode:
+### Directory Selection Navigation
+
+When using interactive directory selection:
 
 - **↑/↓ arrows**: Navigate through files and directories
 - **→ arrow or Enter**: Enter a directory or select current directory
 - **← arrow**: Go to parent directory
 - **q or Esc**: Quit without selecting
+
+### Dependency Graph Navigation
+
+When using the blessed visualization:
+
+- **↑/↓ arrows**: Navigate between modules
+- **←/→ arrows**: Change page or navigate in graph view
+- **g**: Toggle between list and graph view
+- **q or Esc**: Exit gracefully
 
 ## Project Structure
 
@@ -127,6 +142,27 @@ When using interactive mode:
 2. It parses each file to identify imports
 3. It builds a dependency graph based on these imports
 4. The graph is visualized according to the chosen renderer
+
+## Troubleshooting
+
+If you encounter any issues with the visualization:
+
+### Terminal Input Problems
+- If arrow keys aren't working, try running with ASCII mode: `./run.sh --ascii`
+- Some terminals may not support all blessed features. Run `./run.sh -d` for debugging
+- Ensure your terminal supports color and has a minimum size of 40x10
+
+### Visualization Errors
+- If the graph view crashes, try list view only by avoiding the 'g' key
+- In remote terminals (SSH), use ASCII mode for better compatibility
+- If blessed fails to initialize, the program will automatically fall back to ASCII mode
+
+### Debug Mode
+Run with debug mode to get more information:
+```bash
+./run.sh -d
+```
+This will create an error log file with details about any issues.
 
 ## License
 

@@ -45,8 +45,25 @@ def render_blessed_graph(graph: Dict[str, Set[str]]):
         print("Error: 'blessed' library is required for TUI rendering.", file=sys.stderr)
         print("Install it using: pip install blessed", file=sys.stderr)
         return
-
-    term = Terminal()
+    
+    # Import additional required libraries
+    import sys
+    import time
+    import os
+    import traceback
+    
+    # Initialize terminal in raw mode for proper input handling
+    try:
+        term = Terminal()
+    except Exception as e:
+        print(f"Error initializing terminal: {str(e)}", file=sys.stderr)
+        print("Falling back to ASCII output...", file=sys.stderr)
+        from .renderer import render_ascii_graph
+        print(render_ascii_graph(graph))
+        return
+    
+    # Force terminal initialization
+    os.environ.setdefault('ESCDELAY', '25')  # Reduce delay for escape sequences
 
     if not graph:
         print(term.yellow("No dependencies found."))
@@ -174,10 +191,30 @@ def render_blessed_graph(graph: Dict[str, Set[str]]):
             print("".join(row))
     
     # Enhanced TUI rendering
+    original_stty = None
     try:
-        # Setup terminal
-        print(term.enter_fullscreen())
-        print(term.hide_cursor())
+        # Check terminal capabilities
+        if not term.is_a_tty or term.height < 10 or term.width < 40:
+            print("Error: Terminal doesn't support required features or is too small.", file=sys.stderr)
+            print("Minimum terminal size: 40x10, current size: {}x{}".format(term.width, term.height), file=sys.stderr)
+            print("Falling back to ASCII output...", file=sys.stderr)
+            from .renderer import render_ascii_graph
+            print(render_ascii_graph(graph))
+            return
+            
+        # Save original terminal state
+        try:
+            original_stty = os.popen('stty -g').read().strip()
+        except Exception:
+            pass  # If stty fails, we'll handle in the finally block
+        
+        # Setup terminal for proper input handling
+        os.system('stty raw -echo')
+        
+        # Enter fullscreen and hide cursor
+        sys.stdout.write(term.enter_fullscreen())
+        sys.stdout.write(term.hide_cursor())
+        sys.stdout.flush()
         
         current_page = 0
         items_per_page = term.height - 15  # Reserve space for header and footer
@@ -202,16 +239,23 @@ def render_blessed_graph(graph: Dict[str, Set[str]]):
         TEE = "├"
         
         while True:
-            term.clear()
+            sys.stdout.write(term.clear())
+            sys.stdout.flush()
+            
+            # Display title and app info
+            app_title = f"Apollo v0.1.0 Dependency Graph Visualizer"
             
             # Calculate page bounds
             start_idx = current_page * items_per_page
             end_idx = min(start_idx + items_per_page, num_modules)
             
             # Draw decorative header
-            print(HEADER_COLOR(term.center(" Python Dependency Graph Visualizer ")))
-            print(term.center(f"Modules: {num_modules} | Dependencies: {sum(len(d) for d in adj)} | Max Dependencies: {max_deps}"))
-            print(BOX_COLOR("┌" + "─" * (term.width - 2) + "┐"))
+            sys.stdout.write(HEADER_COLOR(term.center(f" {app_title} ")))
+            sys.stdout.write("\n")
+            sys.stdout.write(term.center(f"Modules: {num_modules} | Dependencies: {sum(len(d) for d in adj)} | Max Dependencies: {max_deps}"))
+            sys.stdout.write("\n")
+            sys.stdout.write(BOX_COLOR("┌" + "─" * (term.width - 2) + "┐"))
+            sys.stdout.write("\n")
             
             if view_mode == "list":
                 # Display modules for current page
@@ -291,12 +335,18 @@ def render_blessed_graph(graph: Dict[str, Set[str]]):
                 "↑/↓: Navigate",
                 "←/→: Change page" if view_mode == "list" else "←/→: Navigate",
                 "g: Toggle Graph View",
-                "q: Quit"
+                "q/Esc: Exit Gracefully"
             ]
             print(term.center(HELP_COLOR(" | ".join(controls))))
             
-            # Handle keyboard input
-            key = term.inkey()
+            # Handle keyboard input with proper flushing
+            sys.stdout.flush()
+            try:
+                key = term.inkey(timeout=0.1)  # Small timeout to prevent CPU spinning
+            except Exception as e:
+                # If key input fails, assume ESC was pressed
+                sys.stderr.write(f"\nInput error: {str(e)}\n")
+                break
             
             if key.name == 'KEY_UP':
                 selected_idx = max(0, selected_idx - 1)
@@ -337,12 +387,45 @@ def render_blessed_graph(graph: Dict[str, Set[str]]):
                 view_mode = "graph" if view_mode == "list" else "list"
                 
             elif key.lower() == 'q' or key.name == 'KEY_ESCAPE':
+                # Show exit message
+                sys.stdout.write(term.clear())
+                sys.stdout.write(term.move_y(term.height // 2))
+                sys.stdout.write(term.center(term.bright_green("Thank you for using Apollo!")))
+                sys.stdout.write(term.center("Exiting gracefully..."))
+                sys.stdout.flush()
+                # Small delay for user to see the message
+                time.sleep(0.5)
                 break
     
     except KeyboardInterrupt:
+        # Handle Ctrl+C gracefully
         pass
+    except Exception as e:
+        # Catch any other exceptions to ensure terminal is restored
+        sys.stderr.write(f"\nError in blessed visualization: {str(e)}\n")
+        # Print traceback for debugging
+        traceback.print_exc(file=sys.stderr)
+        # Signal to main that we should fall back to ASCII
+        raise RuntimeError(f"Blessed visualization failed: {str(e)}")
     finally:
-        # Clean up terminal
-        print(term.exit_fullscreen())
-        print(term.normal_cursor())
-        print(term.clear())
+        # Restore original terminal state
+        try:
+            if original_stty:
+                os.system(f'stty {original_stty}')
+            else:
+                os.system('stty sane')  # Fallback if original state wasn't saved
+        except Exception:
+            try:
+                os.system('stty sane')  # Another fallback
+            except Exception:
+                pass  # Last resort, just continue
+            
+        try:
+            # Clean up terminal
+            sys.stdout.write(term.exit_fullscreen())
+            sys.stdout.write(term.normal_cursor())
+            sys.stdout.write(term.clear())
+            sys.stdout.flush()
+        except Exception:
+            # If cleanup fails, at least try to restore cursor
+            print("\033[?25h", end='', flush=True)
